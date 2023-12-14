@@ -7,55 +7,88 @@
 
 # Terminate on error
 set -e
-
+archlinux_version=latest
 # Prepare variables for later use
 images=()
 # The image will be pushed to GitHub container registry
 repobase="${REPOBASE:-ghcr.io/nethserver}"
-# Configure the image name
-reponame="kickstart"
 
-# Create a new empty container image
-container=$(buildah from scratch)
+#Create webtop-webapp container
+reponame="sogo-server"
+container=$(buildah from docker.io/library/archlinux:${archlinux_version})
+buildah run "${container}" /bin/sh <<'EOF'
+set -e
+pacman --noconfirm --needed -Syu && \
+    pacman --noconfirm --needed -S base-devel git supervisor apache zip inetutils libsodium libzip libytnef cronie && yes | pacman -Sccq && \
+    sed 's/.*MAKEFLAGS=.*/MAKEFLAGS="-j$(nproc)"/' -i /etc/makepkg.conf && \
+    sed 's/^# \(%wheel.*NOPASSWD.*\)/\1/' -i /etc/sudoers &&  \
+    useradd -r build -G wheel && \
+    mkdir /build
 
-# Reuse existing nodebuilder-kickstart container, to speed up builds
-if ! buildah containers --format "{{.ContainerName}}" | grep -q nodebuilder-kickstart; then
-    echo "Pulling NodeJS runtime..."
-    buildah from --name nodebuilder-kickstart -v "${PWD}:/usr/src:Z" docker.io/library/node:lts
-fi
+(
+    cd /build
+    git clone --depth 1 https://aur.archlinux.org/libwbxml.git && chown -R build ./libwbxml 
+)
+(
+    cd /build/libwbxml
+    sudo -u build makepkg -is --noconfirm && rm -rf /build/libwbxml && yes | pacman -Sccq
+)
 
-echo "Build static UI files with node..."
-buildah run \
-    --workingdir=/usr/src/ui \
-    --env="NODE_OPTIONS=--openssl-legacy-provider" \
-    nodebuilder-kickstart \
-    sh -c "yarn install && yarn build"
+(
+    cd /build
+    git clone --depth 1 https://aur.archlinux.org/sope.git &&  chown -R build ./sope
+)
+(
+    cd /build/sope
+    sudo -u build makepkg -is --noconfirm && rm -rf /build/sope && yes | pacman -Sccq
+)
+(
+    cd /build
+    git clone --depth 1 https://aur.archlinux.org/sogo.git &&  chown -R build ./sogo
+)
+(
+    cd /build/sogo
+    sudo -u build makepkg -is --noconfirm && rm -rf /build/sogo && yes | pacman -Sccq
+)
+mkdir /var/run/sogo && chown sogo:sogo /var/run/sogo
+mkdir /var/spool/sogo && chown sogo:sogo /var/spool/sogo
 
-# Add imageroot directory to the container image
-buildah add "${container}" imageroot /imageroot
-buildah add "${container}" ui/dist /ui
-# Setup the entrypoint, ask to reserve one TCP port with the label and set a rootless container
-buildah config --entrypoint=/ \
-    --label="org.nethserver.authorizations=traefik@node:routeadm" \
-    --label="org.nethserver.tcp-ports-demand=1" \
-    --label="org.nethserver.rootfull=0" \
-    --label="org.nethserver.images=docker.io/jmalloc/echo-server:latest" \
+# download backup script
+curl -o /usr/lib/sogo/scripts/sogo-backup.sh https://raw.githubusercontent.com/Alinto/sogo/master/Scripts/sogo-backup.sh
+chmod 755 /usr/lib/sogo/scripts/sogo-backup.sh
+
+# clean up
+pacman --noconfirm -Rcns base-devel git && yes | pacman -Sccq && rm -rf /tmp/* /var/tmp/* /var/cache/pacman/pkg/*
+EOF
+buildah add "${container}" httpd.conf /etc/httpd/conf/httpd.conf
+buildah add "${container}" event_listener.ini /etc/supervisor.d/event_listener.ini
+buildah add "${container}" event_listener.sh /usr/local/bin/event_listener.sh
+buildah add "${container}" sogod.ini /etc/supervisor.d/sogod.ini
+buildah add "${container}" apache.ini /etc/supervisor.d/apache.ini
+buildah add "${container}" cronie.ini /etc/supervisor.d/cronie.ini
+buildah add "${container}" memcached.ini /etc/supervisor.d/memcached.ini
+
+
+buildah config --env LD_PRELOAD=/usr/lib/libytnef.so \
+    --port 20001/tcp \
+    --port 20000/tcp \
+    --workingdir="/" \
+    --cmd='["/usr/sbin/supervisord", "--nodaemon"]' \
+    --label="org.opencontainers.image.source=https://github.com/NethServer/sogo-server" \
+    --label="org.opencontainers.image.authors=Stephane de Labrusse <stephdl@de-labrusse.fr>" \
+    --label="org.opencontainers.image.title=SOGo based on Archlinux" \
+    --label="org.opencontainers.image.description=A sogo container based on Archlinux that provides apache, sogo, memcached and cron" \
+    --label="org.opencontainers.image.licenses=GPL-3.0-or-later" \
+    --label="org.opencontainers.image.url=https://github.com/NethServer/sogo-server" \
+    --label="org.opencontainers.image.documentation=https://github.com/NethServer/sogo-server/blob/main/README.md" \
+    --label="org.opencontainers.image.vendor=NethServer" \
     "${container}"
+
 # Commit the image
-buildah commit "${container}" "${repobase}/${reponame}"
+buildah commit --rm "${container}" "${repobase}/${reponame}"
 
 # Append the image URL to the images array
 images+=("${repobase}/${reponame}")
-
-#
-# NOTICE:
-#
-# It is possible to build and publish multiple images.
-#
-# 1. create another buildah container
-# 2. add things to it and commit it
-# 3. append the image url to the images array
-#
 
 #
 # Setup CI when pushing to Github. 
