@@ -13,7 +13,7 @@ images=()
 # The image will be pushed to GitHub container registry
 repobase="${REPOBASE:-ghcr.io/nethserver}"
 
-#Create webtop-webapp container
+#Create sogo-server container
 reponame="sogo-server"
 container=$(buildah from docker.io/library/archlinux:${archlinux_version})
 buildah run "${container}" /bin/sh <<'EOF'
