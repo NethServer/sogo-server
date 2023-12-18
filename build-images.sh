@@ -8,6 +8,9 @@
 # Terminate on error
 set -e
 archlinux_version=base-20231112.0.191179
+# target is 5.9.0
+sogo_sha=8ddd1c71533f467d96ffb40de505f6b4f92e6b73
+sope_sha=eda96a978808a9035eeeaf0bfd7ec6d4cf6c2bdc
 # Prepare variables for later use
 images=()
 # The image will be pushed to GitHub container registry
@@ -16,10 +19,11 @@ repobase="${REPOBASE:-ghcr.io/nethserver}"
 #Create sogo-server container
 reponame="sogo-server"
 container=$(buildah from docker.io/library/archlinux:${archlinux_version})
+buildah config --env SOGO_SHA=${sogo_sha} --env SOPE_SHA=${sope_sha} "${container}"
 buildah run "${container}" /bin/sh <<'EOF'
 set -e
 pacman --noconfirm --needed -Syu && \
-    pacman --noconfirm --needed -S base-devel supervisor apache zip inetutils libsodium libzip libytnef cronie && yes | pacman -Sccq && \
+    pacman --noconfirm --needed -S base-devel git supervisor apache zip inetutils libsodium libzip libytnef cronie && yes | pacman -Sccq && \
     sed 's/.*MAKEFLAGS=.*/MAKEFLAGS="-j$(nproc)"/' -i /etc/makepkg.conf && \
     sed 's/^# \(%wheel.*NOPASSWD.*\)/\1/' -i /etc/sudoers &&  \
     useradd -r build -G wheel && \
@@ -28,26 +32,24 @@ pacman --noconfirm --needed -Syu && \
 (
     cd /build
     git clone --depth 1 https://aur.archlinux.org/libwbxml.git && chown -R build ./libwbxml 
-)
-(
     cd /build/libwbxml
     sudo -u build makepkg -is --noconfirm && rm -rf /build/libwbxml && yes | pacman -Sccq
 )
 
 (
     cd /build
-    git clone --depth 1 https://aur.archlinux.org/sope.git &&  chown -R build ./sope
-)
-(
+    git clone https://aur.archlinux.org/sope.git
     cd /build/sope
+    git checkout -b ns8-build ${SOPE_SHA}
+    chown -R build /build/sope
     sudo -u build makepkg -is --noconfirm && rm -rf /build/sope && yes | pacman -Sccq
 )
 (
     cd /build
-    git clone --depth 1 https://aur.archlinux.org/sogo.git &&  chown -R build ./sogo
-)
-(
+    git clone https://aur.archlinux.org/sogo.git
     cd /build/sogo
+    git checkout -b ns8-build ${SOGO_SHA}
+    chown -R build /build/sogo
     sudo -u build makepkg -is --noconfirm && rm -rf /build/sogo && yes | pacman -Sccq
 )
 mkdir /var/run/sogo && chown sogo:sogo /var/run/sogo
@@ -58,7 +60,7 @@ curl -o /usr/lib/sogo/scripts/sogo-backup.sh https://raw.githubusercontent.com/A
 chmod 755 /usr/lib/sogo/scripts/sogo-backup.sh
 
 # clean up
-pacman --noconfirm -Rcns base-devel && yes | pacman -Sccq && rm -rf /tmp/* /var/tmp/* /var/cache/pacman/pkg/* /build
+pacman --noconfirm -Rcns base-devel git && yes | pacman -Sccq && rm -rf /tmp/* /var/tmp/* /var/cache/pacman/pkg/* /build
 EOF
 buildah add "${container}" httpd.conf /etc/httpd/conf/httpd.conf
 buildah add "${container}" event_listener.ini /etc/supervisor.d/event_listener.ini
