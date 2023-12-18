@@ -7,7 +7,7 @@
 
 # Terminate on error
 set -e
-archlinux_version=base-20231112.0.191179
+archlinux_version=latest
 #visit URL to get the sha
 #https://aur.archlinux.org/packages/sogo/
 #https://aur.archlinux.org/packages/sope/
