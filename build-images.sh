@@ -82,7 +82,7 @@ buildah config --env LD_PRELOAD=/usr/lib/libytnef.so \
     "${container}"
 
 # Commit the image
-buildah commit --rm "${container}" "${repobase}/${reponame}"
+buildah commit "${container}" "${repobase}/${reponame}"
 
 # Append the image URL to the images array
 images+=("${repobase}/${reponame}")
