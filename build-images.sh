@@ -7,7 +7,7 @@
 
 # Terminate on error
 set -e
-archlinux_version=latest
+archlinux_version=base-20231112.0.191179
 # Prepare variables for later use
 images=()
 # The image will be pushed to GitHub container registry
