@@ -55,7 +55,7 @@ curl -o /usr/lib/sogo/scripts/sogo-backup.sh https://raw.githubusercontent.com/A
     chmod 755 /usr/lib/sogo/scripts/sogo-backup.sh
 
 # clean up
-pacman --noconfirm -Rcns base-devel && yes | pacman -Sccq && rm -rf /tmp/* /var/tmp/* /var/cache/pacman/pkg/*
+pacman --noconfirm -Rcns base-devel && yes | pacman -Sccq && rm -rf /tmp/* /var/tmp/* /var/cache/pacman/pkg/* /build
 EOF
 buildah add "${container}" httpd.conf /etc/httpd/conf/httpd.conf
 buildah add "${container}" event_listener.ini /etc/supervisor.d/event_listener.ini
