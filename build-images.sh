@@ -19,7 +19,7 @@ container=$(buildah from docker.io/library/archlinux:${archlinux_version})
 buildah run "${container}" /bin/sh <<'EOF'
 set -e
 pacman --noconfirm --needed -Syu && \
-    pacman --noconfirm --needed -S base-devel git supervisor apache zip inetutils libsodium libzip libytnef cronie && yes | pacman -Sccq && \
+    pacman --noconfirm --needed -S base-devel supervisor apache zip inetutils libsodium libzip libytnef cronie && yes | pacman -Sccq && \
     sed 's/.*MAKEFLAGS=.*/MAKEFLAGS="-j$(nproc)"/' -i /etc/makepkg.conf && \
     sed 's/^# \(%wheel.*NOPASSWD.*\)/\1/' -i /etc/sudoers &&  \
     useradd -r build -G wheel && \
@@ -55,7 +55,7 @@ curl -o /usr/lib/sogo/scripts/sogo-backup.sh https://raw.githubusercontent.com/A
     chmod 755 /usr/lib/sogo/scripts/sogo-backup.sh
 
 # clean up
-pacman --noconfirm -Rcns base-devel git && yes | pacman -Sccq && rm -rf /tmp/* /var/tmp/* /var/cache/pacman/pkg/*
+pacman --noconfirm -Rcns base-devel && yes | pacman -Sccq && rm -rf /tmp/* /var/tmp/* /var/cache/pacman/pkg/*
 EOF
 buildah add "${container}" httpd.conf /etc/httpd/conf/httpd.conf
 buildah add "${container}" event_listener.ini /etc/supervisor.d/event_listener.ini
