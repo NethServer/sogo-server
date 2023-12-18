@@ -26,33 +26,36 @@ pacman --noconfirm --needed -Syu && \
     mkdir /build
 
 (
-    cd /build && \
-    curl -o libwbxml.tar.gz https://aur.archlinux.org/cgit/aur.git/snapshot/libwbxml.tar.gz && \
-        curl -o sope.tar.gz https://aur.archlinux.org/cgit/aur.git/snapshot/sope.tar.gz && \
-        curl -o sogo.tar.gz https://aur.archlinux.org/cgit/aur.git/snapshot/sogo.tar.gz && \
-        tar -xvzf libwbxml.tar.gz && \
-        tar -xvzf sope.tar.gz && \
-        tar -xvzf sogo.tar.gz && \
-        chown -R build /build
+    cd /build
+    git clone --depth 1 https://aur.archlinux.org/libwbxml.git && chown -R build ./libwbxml 
 )
 (
-    cd /build/libwbxml && \
-        sudo -u build makepkg -is --noconfirm && rm -rf /build/libwbxml && yes | pacman -Sccq
+    cd /build/libwbxml
+    sudo -u build makepkg -is --noconfirm && rm -rf /build/libwbxml && yes | pacman -Sccq
+)
+
+(
+    cd /build
+    git clone --depth 1 https://aur.archlinux.org/sope.git &&  chown -R build ./sope
 )
 (
-    cd /build/sope && \
-        sudo -u build makepkg -is --noconfirm && rm -rf /build/sope && yes | pacman -Sccq
+    cd /build/sope
+    sudo -u build makepkg -is --noconfirm && rm -rf /build/sope && yes | pacman -Sccq
 )
 (
-    cd /build/sogo && \
-        sudo -u build makepkg -is --noconfirm && rm -rf /build/sogo && yes | pacman -Sccq
+    cd /build
+    git clone --depth 1 https://aur.archlinux.org/sogo.git &&  chown -R build ./sogo
 )
-mkdir /var/run/sogo && chown sogo:sogo /var/run/sogo && \
-    mkdir /var/spool/sogo && chown sogo:sogo /var/spool/sogo
+(
+    cd /build/sogo
+    sudo -u build makepkg -is --noconfirm && rm -rf /build/sogo && yes | pacman -Sccq
+)
+mkdir /var/run/sogo && chown sogo:sogo /var/run/sogo
+mkdir /var/spool/sogo && chown sogo:sogo /var/spool/sogo
 
 # download backup script
-curl -o /usr/lib/sogo/scripts/sogo-backup.sh https://raw.githubusercontent.com/Alinto/sogo/master/Scripts/sogo-backup.sh && \
-    chmod 755 /usr/lib/sogo/scripts/sogo-backup.sh
+curl -o /usr/lib/sogo/scripts/sogo-backup.sh https://raw.githubusercontent.com/Alinto/sogo/master/Scripts/sogo-backup.sh
+chmod 755 /usr/lib/sogo/scripts/sogo-backup.sh
 
 # clean up
 pacman --noconfirm -Rcns base-devel && yes | pacman -Sccq && rm -rf /tmp/* /var/tmp/* /var/cache/pacman/pkg/* /build
