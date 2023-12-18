@@ -28,6 +28,7 @@ docker run -d --name sogo --restart always --network host \
 ### Credits
 https://aur.archlinux.org/packages/sogo/  
 https://aur.archlinux.org/packages/sope/  
+https://aur.archlinux.org/packages/libwbxml
 
 
 Example of configuration files
