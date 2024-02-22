@@ -12,9 +12,10 @@ archlinux_version=latest
 #https://aur.archlinux.org/packages/sogo/
 #https://aur.archlinux.org/packages/sope/
 #https://aur.archlinux.org/packages/libwbxml
-# target is 5.9.0
+# target is 5.9.1
 sogo_sha=13a121fc563130d5d3f56a63914c9f8411b12eac
 sope_sha=55a184bdfdd64cc849e4b1baa47d07fd6d912b34
+# target is 0.11.8
 libwbxml_sha=68fd1910beae7e866815dbeafda7fbd76feab44d 
 # Prepare variables for later use
 images=()
