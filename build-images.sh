@@ -12,11 +12,11 @@ archlinux_version=latest
 #https://aur.archlinux.org/packages/sogo/
 #https://aur.archlinux.org/packages/sope/
 #https://aur.archlinux.org/packages/libwbxml
-# target is 5.11.2
-sogo_sha=019666832c4a19d5cb0e3f67dba0632aaddd0c26
-sope_sha=f8a78a55ce5d3d3e1c89eb985ff36d6c2d087300
-# target is 0.11.8
-libwbxml_sha=68fd1910beae7e866815dbeafda7fbd76feab44d 
+# target is 5.12.0
+sogo_sha=90b802183ac494220ed655f8631987e2c7cf329c
+sope_sha=d445ea3885f6564a12630cf175887b781e9232b2
+# target is 0.11.10
+libwbxml_sha=07d05cc55dcbf712cd7dc2a158c9ecd492d69d5e
 # Prepare variables for later use
 images=()
 # The image will be pushed to GitHub container registry
