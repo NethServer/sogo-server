@@ -12,9 +12,9 @@ archlinux_version=base-devel
 #https://aur.archlinux.org/packages/sogo/
 #https://aur.archlinux.org/packages/sope/
 #https://aur.archlinux.org/packages/libwbxml
-# target is 5.12.0
-sogo_sha=90b802183ac494220ed655f8631987e2c7cf329c
-sope_sha=d445ea3885f6564a12630cf175887b781e9232b2
+# target is 5.12.1
+sogo_sha=3e5cd47cf3a7725a0700f224d66c83f2881f8464
+sope_sha=829c20e6a6a72abc3d1b95539b4833fc6704a5a0
 # target is 0.11.10
 libwbxml_sha=07d05cc55dcbf712cd7dc2a158c9ecd492d69d5e
 # Prepare variables for later use
