@@ -8,15 +8,12 @@
 # Terminate on error
 set -e
 archlinux_version=base-devel
-#visit URL to get the sha
-#https://aur.archlinux.org/packages/sogo/
-#https://aur.archlinux.org/packages/sope/
-#https://aur.archlinux.org/packages/libwbxml
-# target is 5.12.4
-sogo_sha=28c86e7ac67140d2a3ef8fac5e0befe1d2196a7d
-sope_sha=fcd274b40280aa9b3785ea384fe441b87a0bb56b 
-# target is 0.11.10
-libwbxml_sha=07d05cc55dcbf712cd7dc2a158c9ecd492d69d5e
+# SOGo and SOPE always share the same version number — change one variable to bump both.
+# To update: visit https://github.com/Alinto/sogo/tags
+version=5.12.7
+# libwbxml has its own independent release cycle.
+# To update: visit https://github.com/libwbxml/libwbxml/tags
+libwbxml_version=0.11.10
 # Prepare variables for later use
 images=()
 # The image will be pushed to GitHub container registry
@@ -25,48 +22,95 @@ repobase="${REPOBASE:-ghcr.io/nethserver}"
 #Create sogo-server container
 reponame="sogo-server"
 container=$(buildah from docker.io/library/archlinux:${archlinux_version})
-buildah config --env SOGO_SHA=${sogo_sha} --env SOPE_SHA=${sope_sha} --env LIBWBXML_SHA=${libwbxml_sha} "${container}"
+buildah config --env VERSION=${version} --env LIBWBXML_VERSION=${libwbxml_version} "${container}"
 buildah run "${container}" /bin/sh <<'EOF'
 set -e
 pacman --noconfirm --needed -Syu && \
-    pacman --noconfirm --needed -S base-devel git supervisor apache zip inetutils libsodium libzip libytnef cronie && yes | pacman -Sccq && \
-    sed 's/.*MAKEFLAGS=.*/MAKEFLAGS="-j$(nproc)"/' -i /etc/makepkg.conf && \
-    sed 's/^# \(%wheel.*NOPASSWD.*\)/\1/' -i /etc/sudoers &&  \
-    useradd -r build -G wheel && \
+    pacman --noconfirm --needed -S \
+        base-devel git curl \
+        supervisor apache zip inetutils cronie \
+        libsodium libzip libytnef \
+        gcc-objc gnustep-make gnustep-base \
+        cmake \
+        libmemcached-awesome memcached \
+        oath-toolkit \
+        mariadb-libs postgresql-libs \
+        libldap libxml2 \
+    && yes | pacman -Sccq && \
     mkdir /build
+
 (
     cd /build
-    git clone https://aur.archlinux.org/libwbxml.git
-    cd /build/libwbxml
-    git checkout -b ns8-build ${LIBWBXML_SHA}
-    chown -R build /build/libwbxml
-    sudo -u build makepkg -is --noconfirm && rm -rf /build/libwbxml && yes | pacman -Sccq
+    git clone --depth 1 --branch libwbxml-${LIBWBXML_VERSION} \
+        https://github.com/libwbxml/libwbxml.git
+    mkdir -p /build/libwbxml/build
+    cd /build/libwbxml/build
+    cmake .. -DCMAKE_INSTALL_PREFIX=/usr -DENABLE_UNIT_TEST=OFF
+    make -j$(nproc)
+    make install
+    ldconfig
+    rm -rf /build/libwbxml && yes | pacman -Sccq
 )
 (
     cd /build
-    git clone https://aur.archlinux.org/sope.git
+    git clone --depth 1 --branch SOPE-${VERSION} \
+        https://github.com/Alinto/sope.git
     cd /build/sope
-    git checkout -b ns8-build ${SOPE_SHA}
-    chown -R build /build/sope
-    sudo -u build makepkg -is --noconfirm && rm -rf /build/sope && yes | pacman -Sccq
+    # Patch encoding constants for gnustep-base 1.31+
+    sed 's@NSBIG5StringEncoding@NSBig5StringEncoding@g' -i sope-mime/NGMime/NGMimeType.m
+    sed 's@NSGB2312StringEncoding@NSHZ_GB_2312StringEncoding@g' -i sope-mime/NGMime/NGMimeType.m
+    . /usr/share/GNUstep/Makefiles/GNUstep.sh
+    ./configure --with-gnustep --disable-strip --disable-debug
+    make -j$(nproc)
+    make install
+    ldconfig
+    rm -rf /build/sope && yes | pacman -Sccq
 )
 (
     cd /build
-    git clone https://aur.archlinux.org/sogo.git
+    git clone --depth 1 --branch SOGo-${VERSION} \
+        https://github.com/Alinto/sogo.git
     cd /build/sogo
-    git checkout -b ns8-build ${SOGO_SHA}
-    chown -R build /build/sogo
-    sudo -u build makepkg -is --noconfirm && rm -rf /build/sogo && yes | pacman -Sccq
+    . /usr/share/GNUstep/Makefiles/GNUstep.sh
+    ./configure \
+        --prefix=$(gnustep-config --variable=GNUSTEP_SYSTEM_ROOT) \
+        --disable-debug \
+        --enable-mfa
+    make -j$(nproc) messages=yes
+    make install
+    # ActiveSync is a separate sub-project not included in main SUBPROJECTS
+    cd /build/sogo/ActiveSync
+    make -j$(nproc)
+    make install GNUSTEP_INSTALLATION_DOMAIN=SYSTEM
+    ldconfig
 )
+
+# Create sogo user and runtime directories (done by sogo.install in AUR)
+useradd -r -d /etc/sogo sogo
 mkdir /var/run/sogo && chown sogo:sogo /var/run/sogo
 mkdir /var/spool/sogo && chown sogo:sogo /var/spool/sogo
+mkdir -p /var/log/sogo && chown sogo:sogo /var/log/sogo
+mkdir -p /etc/sogo && chown root:sogo /etc/sogo && chmod 750 /etc/sogo
+
+# Install Apache SOGo config
+install -D -m 0644 /build/sogo/Apache/SOGo.conf /etc/httpd/conf/extra/SOGo.conf
+
+# Install default sogo.conf
+install -D -m 0640 /build/sogo/Scripts/sogo.conf /etc/sogo/sogo.conf
+chown root:sogo /etc/sogo/sogo.conf
+
+# Install SQL update scripts
+mkdir -p /usr/lib/sogo/scripts
+install -m 0755 /build/sogo/Scripts/sql-*.sh /usr/lib/sogo/scripts/
+
+rm -rf /build/sogo && yes | pacman -Sccq
 
 # download backup script
 curl -o /usr/lib/sogo/scripts/sogo-backup.sh https://raw.githubusercontent.com/Alinto/sogo/master/Scripts/sogo-backup.sh
 chmod 755 /usr/lib/sogo/scripts/sogo-backup.sh
 
-# clean up
-pacman --noconfirm -Rcns base-devel git && yes | pacman -Sccq && rm -rf /tmp/* /var/tmp/* /var/cache/pacman/* /build
+# clean up build tools (runtime deps like gnustep-base, mariadb-libs, etc. must stay)
+pacman --noconfirm -Rcns base-devel git gcc-objc gnustep-make cmake && yes | pacman -Sccq && rm -rf /tmp/* /var/tmp/* /var/cache/pacman/* /build
 EOF
 buildah add "${container}" httpd.conf /etc/httpd/conf/httpd.conf
 buildah add "${container}" event_listener.ini /etc/supervisor.d/event_listener.ini
