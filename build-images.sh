@@ -145,7 +145,8 @@ apt-get update && apt-get install -y --no-install-recommends \
     libytnef0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Register copied shared libraries
+# Register copied shared libraries (including SOGo libs in non-standard subdir)
+echo "/usr/local/lib/sogo" > /etc/ld.so.conf.d/sogo.conf
 ldconfig
 
 # Apache: listen on port 20001, disable default site, enable SOGo
