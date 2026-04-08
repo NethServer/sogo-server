@@ -100,8 +100,13 @@ apt-get update && apt-get install -y --no-install-recommends \
     make -j$(nproc)
     make install GNUSTEP_INSTALLATION_DOMAIN=SYSTEM DESTDIR=/staging
 
-    # Apache SOGo config
+    # Apache SOGo config — fix paths for Debian (GNUSTEP_SYSTEM_ROOT=/usr/local)
     install -D -m 0644 /build/sogo/Apache/SOGo.conf \
+        /staging/etc/apache2/conf-available/SOGo.conf
+    sed -i 's|/usr/lib/GNUstep/SOGo/|/usr/local/lib/GNUstep/SOGo/|g' \
+        /staging/etc/apache2/conf-available/SOGo.conf
+    # Enable redirect from / to /SOGo/
+    sed -i 's|#RedirectMatch \^/\$ .*|RedirectMatch ^/$ /SOGo/|' \
         /staging/etc/apache2/conf-available/SOGo.conf
     # Default sogo.conf
     install -D -m 0640 /build/sogo/Scripts/sogo.conf \
