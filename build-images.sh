@@ -34,7 +34,7 @@ apt-get update && apt-get install -y --no-install-recommends \
     gnustep-make gnustep-base-common libgnustep-base-dev \
     libmemcached-dev \
     liboath-dev \
-    libmariadb-dev \
+    libmariadb-dev libmariadb-dev-compat \
     libpq-dev \
     libldap-dev \
     libxml2-dev \
