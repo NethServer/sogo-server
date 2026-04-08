@@ -112,6 +112,7 @@ chmod 755 /usr/lib/sogo/scripts/sogo-backup.sh
 # clean up build tools (runtime deps like gnustep-base, mariadb-libs, etc. must stay)
 pacman --noconfirm -Rcns base-devel git gcc-objc gnustep-make cmake && yes | pacman -Sccq && rm -rf /tmp/* /var/tmp/* /var/cache/pacman/* /build
 EOF
+buildah add "${container}" supervisord.conf /etc/supervisord.conf
 buildah add "${container}" httpd.conf /etc/httpd/conf/httpd.conf
 buildah add "${container}" event_listener.ini /etc/supervisor.d/event_listener.ini
 buildah add "${container}" event_listener.sh /usr/local/bin/event_listener.sh
@@ -125,7 +126,7 @@ buildah config --env LD_PRELOAD=/usr/lib/libytnef.so \
     --port 20001/tcp \
     --port 20000/tcp \
     --workingdir="/" \
-    --cmd='["/usr/sbin/supervisord", "--nodaemon"]' \
+    --cmd='["/usr/sbin/supervisord", "--nodaemon", "-c", "/etc/supervisord.conf"]' \
     --label="org.opencontainers.image.source=https://github.com/NethServer/sogo-server" \
     --label="org.opencontainers.image.authors=Stephane de Labrusse <stephdl@de-labrusse.fr>" \
     --label="org.opencontainers.image.title=SOGo based on Archlinux" \
