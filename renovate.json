@@ -1,0 +1,30 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:base"],
+  "regexManagers": [
+    {
+      "fileMatch": ["^build-images\\.sh$"],
+      "matchStrings": [
+        "# To update: visit https://github\\.com/Alinto/sogo/tags\\nversion=(?<currentValue>[^\\n]+)"
+      ],
+      "depNameTemplate": "Alinto/sogo",
+      "packageNameTemplate": "Alinto/sogo",
+      "datasourceTemplate": "github-tags",
+      "extractVersionTemplate": "^SOGo-(?<version>.+)$",
+      "versioningTemplate": "semver",
+      "autoReplaceStringTemplate": "# To update: visit https://github.com/Alinto/sogo/tags\nversion={{{newValue}}}"
+    },
+    {
+      "fileMatch": ["^build-images\\.sh$"],
+      "matchStrings": [
+        "# To update: visit https://github\\.com/libwbxml/libwbxml/tags\\nlibwbxml_version=(?<currentValue>[^\\n]+)"
+      ],
+      "depNameTemplate": "libwbxml/libwbxml",
+      "packageNameTemplate": "libwbxml/libwbxml",
+      "datasourceTemplate": "github-tags",
+      "extractVersionTemplate": "^libwbxml-(?<version>.+)$",
+      "versioningTemplate": "semver",
+      "autoReplaceStringTemplate": "# To update: visit https://github.com/libwbxml/libwbxml/tags\nlibwbxml_version={{{newValue}}}"
+    }
+  ]
+}
