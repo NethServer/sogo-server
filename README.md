@@ -281,17 +281,18 @@ RedirectMatch ^/$ /SOGo/
 Baked into the image via `cron-sogo`. Mount your own file to override.
 
 ```
+MAILTO=""
 # Expire stale sessions every 5 minutes (30-minute timeout)
-*/5 * * * * sogo /usr/local/sbin/sogo-tool expire-sessions 30
+*/5 * * * * sogo /usr/local/sbin/sogo-tool expire-sessions 30 >/dev/null 2>&1
 
 # Send calendar alarms/reminders every 2 minutes
-*/2 * * * * sogo /usr/local/sbin/sogo-ealarms-notify
+*/2 * * * * sogo /usr/local/sbin/sogo-ealarms-notify >/dev/null 2>&1
 
 # Send vacation auto-reply (requires sieve credentials file)
-* * * * * sogo /usr/local/sbin/sogo-tool update-autoreply -p /etc/sogo/sieve-credentials.creds
+* * * * * sogo test -f /etc/sogo/sieve-credentials.creds && /usr/local/sbin/sogo-tool update-autoreply -p /etc/sogo/sieve-credentials.creds >/dev/null 2>&1
 
 # Daily backup (writes to /var/lib/sogo/backups/ by default, keeps 31 days)
-30 0 * * * sogo /usr/lib/sogo/scripts/sogo-backup.sh
+30 0 * * * sogo /usr/lib/sogo/scripts/sogo-backup.sh >/dev/null 2>&1
 ```
 
 ---

@@ -1,7 +1,9 @@
-# SOGo maintenance tasks
+MAILTO=""
 # Expire stale sessions every 5 minutes (30-minute timeout)
-*/5 * * * * sogo /usr/local/sbin/sogo-tool expire-sessions 30
+*/5 * * * * sogo /usr/local/sbin/sogo-tool expire-sessions 30 >/dev/null 2>&1
 # Send calendar alarms/reminders every 2 minutes
-*/2 * * * * sogo /usr/local/sbin/sogo-ealarms-notify
-# Send vacation auto-reply messages every minute
-* * * * * sogo /usr/local/sbin/sogo-tool update-autoreply -p /etc/sogo/sieve-credentials.creds
+*/2 * * * * sogo /usr/local/sbin/sogo-ealarms-notify >/dev/null 2>&1
+# Send vacation auto-reply (requires sieve credentials file)
+* * * * * sogo test -f /etc/sogo/sieve-credentials.creds && /usr/local/sbin/sogo-tool update-autoreply -p /etc/sogo/sieve-credentials.creds >/dev/null 2>&1
+# Daily backup (writes to /var/lib/sogo/backups/ by default, keeps 31 days)
+30 0 * * * sogo /usr/lib/sogo/scripts/sogo-backup.sh >/dev/null 2>&1
