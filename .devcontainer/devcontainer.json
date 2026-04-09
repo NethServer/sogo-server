@@ -1,8 +1,8 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.245.2/containers/javascript-node
 {
-  "name": "ns8-kickstart",
-  "image": "mcr.microsoft.com/devcontainers/javascript-node:0-18-bullseye",
+  "name": "ns8-core",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22-bookworm",
   // Configure tool-specific properties.
   "customizations": {
     // Configure properties specific to VS Code.
@@ -13,7 +13,6 @@
         "esbenp.prettier-vscode",
         "octref.vetur",
         "shenjiaolong.vue-helper",
-        "waderyan.gitblame",
         "streetsidesoftware.code-spell-checker"
       ]
     }
