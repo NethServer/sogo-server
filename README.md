@@ -10,8 +10,25 @@ Image published to: `ghcr.io/nethserver/sogo-server`
 
 ### Build
 
+#### With buildah (NethServer CI)
+
 ```sh
 bash build-images.sh
+```
+
+#### With Docker / Podman
+
+```sh
+podman build -t ghcr.io/nethserver/sogo-server:latest .
+```
+
+To build a specific version:
+
+```sh
+podman build \
+    --build-arg VERSION=5.12.7 \
+    --build-arg LIBWBXML_VERSION=0.11.10 \
+    -t ghcr.io/nethserver/sogo-server:5.12.7 .
 ```
 
 ---
