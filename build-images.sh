@@ -116,17 +116,14 @@ apt-get update && apt-get install -y --no-install-recommends \
     # Default sogo.conf
     install -D -m 0640 /build/sogo/Scripts/sogo.conf \
         /staging/etc/sogo/sogo.conf
-    # SQL update scripts
+    # SQL update scripts and backup script (copy from cloned source)
     mkdir -p /staging/usr/lib/sogo/scripts
     install -m 0755 /build/sogo/Scripts/sql-*.sh \
         /staging/usr/lib/sogo/scripts/
+    install -m 0755 /build/sogo/Scripts/sogo-backup.sh \
+        /staging/usr/lib/sogo/scripts/
     rm -rf /build/sogo
 )
-
-# ── sogo-backup.sh ────────────────────────────────────────────────────────────
-curl -o /staging/usr/lib/sogo/scripts/sogo-backup.sh \
-    https://raw.githubusercontent.com/Alinto/sogo/SOGo-${VERSION}/Scripts/sogo-backup.sh
-chmod 755 /staging/usr/lib/sogo/scripts/sogo-backup.sh
 EOF
 
 # ─── Stage 2: runtime ──────────────────────────────────────────────────────────
@@ -182,7 +179,7 @@ buildah add "${container}" event_listener.ini /etc/supervisor.d/event_listener.i
 buildah add "${container}" event_listener.sh /usr/local/bin/event_listener.sh
 buildah add "${container}" sogod.ini /etc/supervisor.d/sogod.ini
 buildah add "${container}" apache.ini /etc/supervisor.d/apache.ini
-buildah add "${container}" cronie.ini /etc/supervisor.d/cronie.ini
+buildah add "${container}" cron.ini /etc/supervisor.d/cron.ini
 buildah add "${container}" memcached.ini /etc/supervisor.d/memcached.ini
 
 buildah config --env LD_PRELOAD=libytnef.so.0 \
