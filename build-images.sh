@@ -124,6 +124,15 @@ apt-get update && apt-get install -y --no-install-recommends \
         /staging/usr/lib/sogo/scripts/
     rm -rf /build/sogo
 )
+
+# ── Cleanup /staging: strip binaries, remove static libs, headers and docs ───
+find /staging -name '*.a' -delete
+find /staging -name '*.la' -delete
+rm -rf /staging/usr/include /staging/usr/local/include
+rm -rf /staging/usr/share/doc /staging/usr/share/man /staging/usr/share/info
+find /staging -type f \( -name '*.so*' -o -perm /0111 \) \
+    ! -name '*.py' \
+    -exec strip --strip-unneeded {} + 2>/dev/null || true
 EOF
 
 # ─── Stage 2: runtime ──────────────────────────────────────────────────────────
@@ -149,7 +158,8 @@ apt-get update && apt-get install -y --no-install-recommends \
     libsodium23 \
     libzip5 \
     libytnef0 \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man \
+        /usr/share/locale /usr/share/info /var/cache/apt
 
 # Register copied shared libraries (including SOGo libs in non-standard subdir)
 echo "/usr/local/lib/sogo" > /etc/ld.so.conf.d/sogo.conf
