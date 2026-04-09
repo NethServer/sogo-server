@@ -25,6 +25,11 @@ reponame="sogo-server"
 # /staging so the runtime stage can copy only the compiled artefacts.
 
 builder=$(buildah from docker.io/library/debian:trixie)
+container=$(buildah from docker.io/library/debian:trixie-slim)
+
+# Clean up working containers on exit (success or failure)
+trap 'buildah rm "${builder}" "${container}" 2>/dev/null || true' EXIT
+
 buildah config --env VERSION=${version} --env LIBWBXML_VERSION=${libwbxml_version} "${builder}"
 buildah run "${builder}" /bin/sh <<'EOF'
 set -e
@@ -120,14 +125,13 @@ apt-get update && apt-get install -y --no-install-recommends \
 
 # ── sogo-backup.sh ────────────────────────────────────────────────────────────
 curl -o /staging/usr/lib/sogo/scripts/sogo-backup.sh \
-    https://raw.githubusercontent.com/Alinto/sogo/master/Scripts/sogo-backup.sh
+    https://raw.githubusercontent.com/Alinto/sogo/SOGo-${VERSION}/Scripts/sogo-backup.sh
 chmod 755 /staging/usr/lib/sogo/scripts/sogo-backup.sh
 EOF
 
 # ─── Stage 2: runtime ──────────────────────────────────────────────────────────
 # Debian Trixie slim with only runtime dependencies.
 
-container=$(buildah from docker.io/library/debian:trixie-slim)
 buildah config --env VERSION=${version} --env LIBWBXML_VERSION=${libwbxml_version} "${container}"
 
 # Copy compiled artefacts from builder staging area into the runtime container
@@ -163,8 +167,9 @@ a2enconf SOGo
 # Create supervisor.d directory (Debian supervisor uses conf.d but we use our own config)
 mkdir -p /etc/supervisor.d
 
-# Create sogo user and runtime directories
-useradd -r -d /etc/sogo sogo
+# Create sogo user with a writable home (GNUstep writes defaults under $HOME/GNUstep/)
+useradd -r -d /var/lib/sogo sogo
+mkdir -p /var/lib/sogo && chown sogo:sogo /var/lib/sogo
 mkdir /var/run/sogo && chown sogo:sogo /var/run/sogo
 mkdir /var/spool/sogo && chown sogo:sogo /var/spool/sogo
 mkdir -p /var/log/sogo && chown sogo:sogo /var/log/sogo
