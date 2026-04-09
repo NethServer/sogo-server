@@ -7,7 +7,7 @@ ARG LIBWBXML_VERSION=0.11.10
 # ─── Stage 1: builder ─────────────────────────────────────────────────────────
 # Full Debian Trixie with build tools. Compiles libwbxml, SOPE and SOGo into
 # /staging so the runtime stage can copy only the compiled artefacts.
-FROM debian:trixie AS builder
+FROM debian:trixie-20260406 AS builder
 ARG VERSION
 ARG LIBWBXML_VERSION
 
