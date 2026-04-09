@@ -10,7 +10,7 @@ set -e
 
 # SOGo and SOPE always share the same version number — change one variable to bump both.
 # To update: visit https://github.com/Alinto/sogo/tags
-version=5.12.7
+version=5.12.6
 # libwbxml has its own independent release cycle.
 # To update: visit https://github.com/libwbxml/libwbxml/tags
 libwbxml_version=0.11.10
