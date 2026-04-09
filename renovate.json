@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:base"],
+  "extends": ["local>NethServer/.github:ns8-automerge"],
   "regexManagers": [
     {
       "fileMatch": ["^build-images\\.sh$"],
