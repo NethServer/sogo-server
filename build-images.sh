@@ -181,8 +181,9 @@ buildah add "${container}" sogod.ini /etc/supervisor.d/sogod.ini
 buildah add "${container}" apache.ini /etc/supervisor.d/apache.ini
 buildah add "${container}" cron.ini /etc/supervisor.d/cron.ini
 buildah add "${container}" memcached.ini /etc/supervisor.d/memcached.ini
+buildah add "${container}" cron-sogo /etc/cron.d/sogo
 
-buildah config --env LD_PRELOAD=libytnef.so.0 \
+buildah config \
     --port 20001/tcp \
     --port 20000/tcp \
     --workingdir="/" \
