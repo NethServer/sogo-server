@@ -24,9 +24,11 @@ reponame="sogo-server"
 # Uses the Dockerfile multi-stage build (podman layer cache speeds up local builds).
 # podman and buildah share the same storage, so buildah push works on the result.
 podman build \
+    --force-rm \
+    --layers \
     --build-arg VERSION=${version} \
     --build-arg LIBWBXML_VERSION=${libwbxml_version} \
-    -t "${repobase}/${reponame}" .
+    --tag "${repobase}/${reponame}" .
 
 # Append the image URL to the images array
 images+=("${repobase}/${reponame}")
