@@ -1,39 +1,53 @@
-# [SOGo](https://sogo.nu/) Docker images based on Arch Linux
-The original author is [Frederick888](https://github.com/Frederick888/docker-archlinux-sogo)
+# [SOGo](https://sogo.nu/) container image based on Debian Trixie
 
-### Usage
+Built with [buildah](https://buildah.io/) using a multi-stage approach:
+- **Builder** stage: `debian:trixie` — compiles libwbxml, SOPE and SOGo into `/staging`
+- **Runtime** stage: `debian:trixie-slim` — only compiled artefacts + runtime dependencies
 
+Image published to: `ghcr.io/nethserver/sogo-server`
 
-the http service is running under the tcp port 20001, apache does a reverse proxy to SOGo tcp 20000, the port 20000 is not needed to be opened.
+---
+
+### Build
 
 ```sh
-docker run -d --name sogo --restart always \
-    --publish 127.0.0.1:20000:20000 \
+bash build-images.sh
+```
+
+---
+
+### Run with Podman
+
+The HTTP service listens on port **20001** (Apache reverse-proxying SOGo on port 20000).
+
+Minimal example:
+
+```sh
+podman run -d --name sogo --restart always \
     --publish 127.0.0.1:20001:20001 \
     -v ./sogo.conf:/etc/sogo/sogo.conf:Z \
-    -v ./SOGo.conf:/etc/httpd/conf/extra/SOGo.conf:Z \
-    -v ./sogo:/etc/cron.d/sogo:Z \
-    stephdl/sogo:latest
+    ghcr.io/nethserver/sogo-server:latest
 ```
 
-Alternatively,
+Full example with all bind mounts:
 
 ```sh
-docker run -d --name sogo --restart always --network host \
-    -v /srv/sogo:/etc/sogo \
-    stephdl/sogo:latest
+podman run -d --name sogo --restart always \
+    --publish 127.0.0.1:20001:20001 \
+    -v ./sogo.conf:/etc/sogo/sogo.conf:Z \
+    -v ./SOGo.conf:/etc/apache2/conf-available/SOGo.conf:Z \
+    -v ./cron-sogo:/etc/cron.d/sogo:Z \
+    -v sogo-data:/var/lib/sogo:Z \
+    -v sogo-spool:/var/spool/sogo:Z \
+    -v sogo-logs:/var/log/sogo:Z \
+    ghcr.io/nethserver/sogo-server:latest
 ```
-...however it may raise some security concerns.
 
-### Credits
-https://aur.archlinux.org/packages/sogo/  
-https://aur.archlinux.org/packages/sope/  
-https://aur.archlinux.org/packages/libwbxml
+---
 
+### Configuration files
 
-Example of configuration files
-
-`/etc/sogo/sogo.conf`
+#### `/etc/sogo/sogo.conf`
 
 ```
 {
@@ -119,7 +133,6 @@ Example of configuration files
   //  }
   //);
 
-
   /* SQL authentication example */
   /*  These database columns MUST be present in the view/table:
    *    c_uid - will be used for authentication -  it's the username or username@domain.tld)
@@ -161,7 +174,7 @@ Example of configuration files
   //SxVMemLimit = 384;
   //WOPidFile = "/var/run/sogo/sogo.pid";
   //SOGoMemcachedHost = "/var/run/memcached.sock";
-  
+
   /* Debug */
   //SOGoDebugRequests = YES;
   //SoDebugBaseURL = YES;
@@ -175,154 +188,102 @@ Example of configuration files
 }
 ```
 
+---
 
-`/etc/httpd/conf/extra/SOGo.conf`
+#### `/etc/apache2/conf-available/SOGo.conf`
 
-```Alias /SOGo.woa/WebServerResources/ \
-      /usr/lib/GNUstep/SOGo/WebServerResources/
+Generated at build time from upstream SOGo source with paths adjusted for Debian
+(`/usr/local/lib/GNUstep/SOGo/`). Mount your own only if you need to customize it.
+
+```apache
+Alias /SOGo.woa/WebServerResources/ \
+      /usr/local/lib/GNUstep/SOGo/WebServerResources/
 Alias /SOGo/WebServerResources/ \
-      /usr/lib/GNUstep/SOGo/WebServerResources/
+      /usr/local/lib/GNUstep/SOGo/WebServerResources/
 
-<Directory /usr/lib/GNUstep/SOGo/>
+<Directory /usr/local/lib/GNUstep/SOGo/>
     AllowOverride None
 
-    <IfVersion < 2.4>
-        Order deny,allow
-        Allow from all
-    </IfVersion>
     <IfVersion >= 2.4>
         Require all granted
     </IfVersion>
 
-    # Explicitly allow caching of static content to avoid browser specific behavior.
-    # A resource's URL MUST change in order to have the client load the new version.
     <IfModule expires_module>
       ExpiresActive On
       ExpiresDefault "access plus 1 year"
     </IfModule>
 </Directory>
 
-# Don't send the Referer header for cross-origin requests
 Header always set Referrer-Policy "same-origin"
 
 <Location /SOGo>
-  # Don't cache dynamic content
   Header set Cache-Control "max-age=0, no-cache, no-store"
 </Location>
-
-## Uncomment the following to enable proxy-side authentication, you will then
-## need to set the "SOGoTrustProxyAuthentication" SOGo user default to YES and
-## adjust the "x-webobjects-remote-user" proxy header in the "Proxy" section
-## below.
-#
-## For full proxy-side authentication:
-#<Location /SOGo>
-#  AuthType XXX
-#  Require valid-user
-#  SetEnv proxy-nokeepalive 1
-#  Allow from all
-#</Location>
-#
-## For proxy-side authentication only for CardDAV and GroupDAV from external
-## clients:
-#<Location /SOGo/dav>
-#  AuthType XXX
-#  Require valid-user
-#  SetEnv proxy-nokeepalive 1
-#  Allow from all
-#</Location>
 
 ProxyRequests Off
 ProxyPreserveHost On
 SetEnv proxy-nokeepalive 1
 
-# Uncomment the following lines if you experience "Bad gateway" errors with mod_proxy
-#SetEnv proxy-initial-not-pooled 1
-#SetEnv force-proxy-request-1.0 1
-
-# When using CAS, you should uncomment this and install cas-proxy-validate.py
-# in /usr/lib/cgi-bin to reduce server overloading
-#
-# ProxyPass /SOGo/casProxy http://localhost/cgi-bin/cas-proxy-validate.py
-# <Proxy http://localhost/app/cas-proxy-validate.py>
-#   Order deny,allow
-#   Allow from your-cas-host-addr
-# </Proxy>
-
-# Redirect / to /SOGo
-#RedirectMatch ^/$ https://mail.yourdomain.com/SOGo
-
-# Enable to use Microsoft ActiveSync support
-# Note that you MUST have many sogod workers to use ActiveSync.
-# See the SOGo Installation and Configuration guide for more details.
-#
-#ProxyPass /Microsoft-Server-ActiveSync \
-# http://127.0.0.1:20000/SOGo/Microsoft-Server-ActiveSync \
-# retry=60 connectiontimeout=5 timeout=360
-
 ProxyPass /SOGo http://127.0.0.1:20000/SOGo retry=0 nocanon
 
 <Proxy http://127.0.0.1:20000/SOGo>
-## Adjust the following to your configuration
-## and make sure to enable the headers module
   <IfModule headers_module>
     RequestHeader set "x-webobjects-server-port" "443"
     SetEnvIf Host (.*) HTTP_HOST=$1
     RequestHeader set "x-webobjects-server-name" "%{HTTP_HOST}e" env=HTTP_HOST
     RequestHeader set "x-webobjects-server-url" "https://%{HTTP_HOST}e" env=HTTP_HOST
-
-## When using proxy-side autentication, you need to uncomment and
-## adjust the following line:
     RequestHeader unset "x-webobjects-remote-user"
-#    RequestHeader set "x-webobjects-remote-user" "%{REMOTE_USER}e" env=REMOTE_USER
-
     RequestHeader set "x-webobjects-server-protocol" "HTTP/1.0"
   </IfModule>
 
   AddDefaultCharset UTF-8
-
-  Order allow,deny
-  Allow from all
+  Require all granted
 </Proxy>
 
-# For Apple autoconfiguration
+# Redirect / to /SOGo/
+RedirectMatch ^/$ /SOGo/
+
+# Apple autoconfiguration
 <IfModule rewrite_module>
   RewriteEngine On
   RewriteRule ^/.well-known/caldav/?$ /SOGo/dav [R=301]
   RewriteRule ^/.well-known/carddav/?$ /SOGo/dav [R=301]
 </IfModule>
+
+# Enable to use Microsoft ActiveSync support
+# Note that you MUST have many sogod workers to use ActiveSync.
+#ProxyPass /Microsoft-Server-ActiveSync \
+# http://127.0.0.1:20000/SOGo/Microsoft-Server-ActiveSync \
+# retry=60 connectiontimeout=5 timeout=360
 ```
 
-`/etc/cron.d/sogo`
+---
+
+#### `/etc/cron.d/sogo`
+
+Baked into the image via `cron-sogo`. Mount your own file to override.
 
 ```
-# Sogod cronjobs
+# Expire stale sessions every 5 minutes (30-minute timeout)
+*/5 * * * * sogo /usr/local/sbin/sogo-tool expire-sessions 30
 
-# Vacation messages expiration
-# The credentials file should contain the sieve admin credentials (username:passwd)
-0 0 * * *      sogo	/usr/sbin/sogo-tool update-autoreply -p /etc/sogo/sieve.creds
+# Send calendar alarms/reminders every 2 minutes
+*/2 * * * * sogo /usr/local/sbin/sogo-ealarms-notify
 
-# Session cleanup - runs every minute
-#   - Ajust the nbMinutes parameter to suit your needs
-# Example: Sessions without activity since 60 minutes will be dropped:
-* * * * *      sogo	/usr/sbin/sogo-tool expire-sessions 60
+# Send vacation auto-reply (requires sieve credentials file)
+* * * * * sogo /usr/local/sbin/sogo-tool update-autoreply -p /etc/sogo/sieve-credentials.creds
 
-# Email alarms - runs every minutes
-# If you need to use SMTP AUTH for outgoing mails, specify credentials to use
-# with '-p /path/to/credentialsFile' (same format as the sieve credentials)
-* * * * *      sogo	/usr/sbin/sogo-ealarms-notify > /dev/null 2>&1
-
-# Daily backups
-#   - writes to ~sogo/backups/ by default
-#   - will keep 31 days worth of backups by default
-#   - runs once a day by default, but can run more frequently
-#   - make sure to set the path to sogo-backup.sh correctly
+# Daily backup (writes to /var/lib/sogo/backups/ by default, keeps 31 days)
 30 0 * * * sogo /usr/lib/sogo/scripts/sogo-backup.sh
 ```
 
+---
 
-### Build
-```
-docker build -t  stephdl/sogo:5.9.0 .
-docker push  stephdl/sogo:5.9.0
-```
+### Supervisor-managed services
+
+| Service   | Config file                       |
+|-----------|-----------------------------------|
+| sogod     | `/etc/supervisor.d/sogod.ini`     |
+| apache2   | `/etc/supervisor.d/apache.ini`    |
+| cron      | `/etc/supervisor.d/cron.ini`      |
+| memcached | `/etc/supervisor.d/memcached.ini` |
