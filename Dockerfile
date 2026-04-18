@@ -116,7 +116,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ldconfig \
     && sed -i 's/^Listen 80$/Listen 20001/' /etc/apache2/ports.conf \
     && a2dissite 000-default \
-    && a2enmod proxy proxy_http headers rewrite \
+    && a2enmod proxy proxy_http headers rewrite expires \
+    && a2dismod reqtimeout \
     && a2enconf SOGo \
     && mkdir -p /etc/supervisor.d \
     && useradd -r -d /var/lib/sogo sogo \
