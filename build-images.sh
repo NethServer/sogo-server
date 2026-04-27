@@ -12,9 +12,9 @@ archlinux_version=base-devel
 #https://aur.archlinux.org/packages/sogo/
 #https://aur.archlinux.org/packages/sope/
 #https://aur.archlinux.org/packages/libwbxml
-# target is 5.12.4
-sogo_sha=28c86e7ac67140d2a3ef8fac5e0befe1d2196a7d
-sope_sha=fcd274b40280aa9b3785ea384fe441b87a0bb56b 
+# target is 5.12.7
+sogo_sha=b7a8d408abc8cc8f39a296dc99f49c117ff53d9e
+sope_sha=b352a2a418d6b1d13e3051dbb22dd784c11995f6
 # target is 0.11.10
 libwbxml_sha=07d05cc55dcbf712cd7dc2a158c9ecd492d69d5e
 # Prepare variables for later use
@@ -29,7 +29,7 @@ buildah config --env SOGO_SHA=${sogo_sha} --env SOPE_SHA=${sope_sha} --env LIBWB
 buildah run "${container}" /bin/sh <<'EOF'
 set -e
 pacman --noconfirm --needed -Syu && \
-    pacman --noconfirm --needed -S base-devel git supervisor apache zip inetutils libsodium libzip libytnef cronie && yes | pacman -Sccq && \
+    pacman --noconfirm --needed -S base-devel git supervisor apache zip inetutils libsodium libzip libytnef cronie && rm -rf /var/cache/pacman/pkg/download-*/ && yes | pacman -Sccq && \
     sed 's/.*MAKEFLAGS=.*/MAKEFLAGS="-j$(nproc)"/' -i /etc/makepkg.conf && \
     sed 's/^# \(%wheel.*NOPASSWD.*\)/\1/' -i /etc/sudoers &&  \
     useradd -r build -G wheel && \
@@ -40,7 +40,7 @@ pacman --noconfirm --needed -Syu && \
     cd /build/libwbxml
     git checkout -b ns8-build ${LIBWBXML_SHA}
     chown -R build /build/libwbxml
-    sudo -u build makepkg -is --noconfirm && rm -rf /build/libwbxml && yes | pacman -Sccq
+    sudo -u build makepkg -is --noconfirm && rm -rf /build/libwbxml && rm -rf /var/cache/pacman/pkg/download-*/ && yes | pacman -Sccq
 )
 (
     cd /build
@@ -48,7 +48,7 @@ pacman --noconfirm --needed -Syu && \
     cd /build/sope
     git checkout -b ns8-build ${SOPE_SHA}
     chown -R build /build/sope
-    sudo -u build makepkg -is --noconfirm && rm -rf /build/sope && yes | pacman -Sccq
+    sudo -u build makepkg -is --noconfirm && rm -rf /build/sope && rm -rf /var/cache/pacman/pkg/download-*/ && yes | pacman -Sccq
 )
 (
     cd /build
@@ -56,7 +56,7 @@ pacman --noconfirm --needed -Syu && \
     cd /build/sogo
     git checkout -b ns8-build ${SOGO_SHA}
     chown -R build /build/sogo
-    sudo -u build makepkg -is --noconfirm && rm -rf /build/sogo && yes | pacman -Sccq
+    sudo -u build makepkg -is --noconfirm && rm -rf /build/sogo && rm -rf /var/cache/pacman/pkg/download-*/ && yes | pacman -Sccq
 )
 mkdir /var/run/sogo && chown sogo:sogo /var/run/sogo
 mkdir /var/spool/sogo && chown sogo:sogo /var/spool/sogo
@@ -66,7 +66,7 @@ curl -o /usr/lib/sogo/scripts/sogo-backup.sh https://raw.githubusercontent.com/A
 chmod 755 /usr/lib/sogo/scripts/sogo-backup.sh
 
 # clean up
-pacman --noconfirm -Rcns base-devel git && yes | pacman -Sccq && rm -rf /tmp/* /var/tmp/* /var/cache/pacman/* /build
+pacman --noconfirm -Rcns base-devel git && rm -rf /var/cache/pacman/pkg/download-*/ && yes | pacman -Sccq && rm -rf /tmp/* /var/tmp/* /var/cache/pacman/* /build
 EOF
 buildah add "${container}" httpd.conf /etc/httpd/conf/httpd.conf
 buildah add "${container}" event_listener.ini /etc/supervisor.d/event_listener.ini
