@@ -140,6 +140,7 @@ COPY cron-sogo /etc/cron.d/sogo
 
 ENV VERSION=${VERSION}
 ENV LIBWBXML_VERSION=${LIBWBXML_VERSION}
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libytnef.so.0
 
 LABEL org.opencontainers.image.source="https://github.com/NethServer/sogo-server"
 LABEL org.opencontainers.image.authors="Stephane de Labrusse <stephdl@de-labrusse.fr>"
