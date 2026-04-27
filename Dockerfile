@@ -116,9 +116,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ldconfig \
     && sed -i 's/^Listen 80$/Listen 20001/' /etc/apache2/ports.conf \
     && a2dissite 000-default \
-    && a2enmod proxy proxy_http headers rewrite expires \
-    && a2dismod reqtimeout \
-    && a2enconf SOGo \
+    && a2enmod proxy proxy_http proxy_http2 proxy_balancer slotmem_shm headers rewrite reqtimeout authz_groupfile include userdir deflate expires remoteip \
+    && echo 'RemoteIPHeader X-Forwarded-For' > /etc/apache2/conf-available/remoteip.conf \
+    && echo 'RemoteIPInternalProxy 10.0.0.0/8' >> /etc/apache2/conf-available/remoteip.conf \
+    && a2enconf SOGo remoteip \
     && mkdir -p /etc/supervisor.d \
     && useradd -r -d /var/lib/sogo sogo \
     && mkdir -p /var/lib/sogo && chown sogo:sogo /var/lib/sogo \
