@@ -1,0 +1,44 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "labels": ["dependencies", "upstream"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Track SOGo upstream releases (Alinto/sogo GitHub tags)",
+      "managerFilePatterns": ["build-images.sh"],
+      "matchStrings": ["sogo_version=\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""],
+      "depNameTemplate": "Alinto/sogo",
+      "datasourceTemplate": "github-tags",
+      "extractVersionTemplate": "^SOGo-(?<version>.+)$",
+      "versioningTemplate": "loose"
+    },
+    {
+      "customType": "regex",
+      "description": "Track SOPE upstream releases (Alinto/sope GitHub tags)",
+      "managerFilePatterns": ["build-images.sh"],
+      "matchStrings": ["sope_version=\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""],
+      "depNameTemplate": "Alinto/sope",
+      "datasourceTemplate": "github-tags",
+      "extractVersionTemplate": "^SOPE-(?<version>.+)$",
+      "versioningTemplate": "loose"
+    },
+    {
+      "customType": "regex",
+      "description": "Track libwbxml upstream releases (libwbxml/libwbxml GitHub tags)",
+      "managerFilePatterns": ["build-images.sh"],
+      "matchStrings": ["libwbxml_version=\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""],
+      "depNameTemplate": "libwbxml/libwbxml",
+      "datasourceTemplate": "github-tags",
+      "extractVersionTemplate": "^libwbxml-(?<version>.+)$",
+      "versioningTemplate": "loose"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "SOGo and SOPE are released in lockstep - bump them together in one PR",
+      "matchPackageNames": ["Alinto/sogo", "Alinto/sope"],
+      "groupName": "SOGo stack"
+    }
+  ]
+}
