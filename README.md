@@ -13,7 +13,7 @@ docker run -d --name sogo --restart always \
     -v ./sogo.conf:/etc/sogo/sogo.conf:Z \
     -v ./SOGo.conf:/etc/httpd/conf/extra/SOGo.conf:Z \
     -v ./sogo:/etc/cron.d/sogo:Z \
-    stephdl/sogo:latest
+    ghcr.io/nethserver/sogo-server:latest
 ```
 
 Alternatively,
@@ -21,9 +21,53 @@ Alternatively,
 ```sh
 docker run -d --name sogo --restart always --network host \
     -v /srv/sogo:/etc/sogo \
-    stephdl/sogo:latest
+    ghcr.io/nethserver/sogo-server:latest
 ```
 ...however it may raise some security concerns.
+
+### Build & test
+
+This image is built **directly from the upstream SOGo sources** (no AUR / no
+`makepkg`), in a multi-stage build. Current version: **SOGo / SOPE 5.12.8**,
+libwbxml 0.11.10.
+
+Versions are pinned in a **single source of truth**: the three static
+variables at the top of `build-images.sh` (`libwbxml_version`, `sope_version`,
+`sogo_version`), tracked by Renovate. The tarball URLs and the in-build
+version self-check all derive from them. The `Dockerfile` has **no default
+version** — it requires the build args, so an unpinned build fails fast.
+
+Build the image (CI / production path, buildah wrapper around the Dockerfile):
+
+```sh
+./build-images.sh
+```
+
+Or build the Dockerfile directly — the version build args are mandatory
+(no defaults; a missing one aborts the build):
+
+```sh
+podman build -t ghcr.io/nethserver/sogo-server \
+  --build-arg LIBWBXML_VERSION=0.11.10 \
+  --build-arg SOPE_VERSION=5.12.8 \
+  --build-arg SOGO_VERSION=5.12.8 \
+  -f Dockerfile .
+```
+
+The build runs an offline self-check (`build/verify-image.sh`): it aborts the
+build if a library/bundle is missing, the built SOGo version does not match
+the requested one, an Apache module/directive is missing, the proxy/sogod
+ports disagree, or a build tool leaked into the runtime image.
+
+Runtime smoke test of the Apache reverse-proxy (login, ActiveSync, CalDAV /
+CardDAV, supervisor services, headers, static assets):
+
+```sh
+./tests/proxy-smoke.sh ghcr.io/nethserver/sogo-server:<tag>
+```
+
+It also runs automatically in CI after each publish
+(`.github/workflows/proxy-smoke.yml`).
 
 ### Credits
 https://aur.archlinux.org/packages/sogo/  
@@ -321,8 +365,5 @@ ProxyPass /SOGo http://127.0.0.1:20000/SOGo retry=0 nocanon
 ```
 
 
-### Build
-```
-docker build -t  stephdl/sogo:5.9.0 .
-docker push  stephdl/sogo:5.9.0
-```
+<!-- Build & push: see the "Build & test" section above. Images are
+     published to ghcr.io/nethserver/sogo-server by the CI. -->
