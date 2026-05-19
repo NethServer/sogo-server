@@ -95,20 +95,14 @@ if [ -n "$proxy_port" ] && [ "$proxy_port" = "$sogod_port" ]; then
 else
     err "ProxyPass port ($proxy_port) != sogod -WOPort ($sogod_port)"
 fi
-# ActiveSync is enabled via the repo drop-in SOGoActiveSync.conf, which
-# httpd.conf must Include. (Distinct path from /SOGo: ordering is irrelevant.)
-as=/etc/httpd/conf/extra/SOGoActiveSync.conf
-[ -f "$as" ] && grep -q '^ProxyPass /Microsoft-Server-ActiveSync' "$as" \
-    && ok "ActiveSync ProxyPass drop-in present" \
-    || err "ActiveSync ProxyPass missing from $as"
-grep -Eq '^[[:space:]]*Include[[:space:]]+conf/extra/SOGoActiveSync\.conf' \
-    /etc/httpd/conf/httpd.conf \
-    && ok "httpd.conf includes SOGoActiveSync.conf" \
-    || err "httpd.conf does not Include conf/extra/SOGoActiveSync.conf"
-httpd -t >/dev/null 2>&1 || err "apache config invalid with ActiveSync drop-in"
-# ActiveSync ProxyPass timeout must be large enough for EAS Ping (>=300s)
-# match the standalone 'timeout=' token, not 'connectiontimeout='
-eas_to=$(grep -oE '(^|[[:space:]])timeout=[0-9]+' "$as" | head -1 | grep -oE '[0-9]+')
+# ActiveSync ProxyPass must be active (uncommented) in SOGo.conf.
+# compile-sogo.sh ensures this via sed; verify it here.
+grep -q '^ProxyPass /Microsoft-Server-ActiveSync' /etc/httpd/conf/extra/SOGo.conf \
+    && ok "ActiveSync ProxyPass active in SOGo.conf" \
+    || err "ActiveSync ProxyPass missing or commented in SOGo.conf"
+# ActiveSync ProxyPass timeout must be large enough for EAS Ping (>=300s);
+# match the standalone 'timeout=' token, not 'connectiontimeout='.
+eas_to=$(grep -oE '(^|[[:space:]])timeout=[0-9]+' /etc/httpd/conf/extra/SOGo.conf | head -1 | grep -oE '[0-9]+')
 if [ -n "$eas_to" ] && [ "$eas_to" -ge 300 ]; then
     ok "ActiveSync ProxyPass timeout=${eas_to}s (>=300)"
 else

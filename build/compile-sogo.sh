@@ -58,6 +58,13 @@ make install DESTDIR=/staging
 # Config files installed manually by the AUR sogo package (staged)
 install -D -m 0600 Scripts/sogo.conf   /staging/etc/sogo/sogo.conf
 install -D -m 0644 Apache/SOGo.conf    /staging/etc/httpd/conf/extra/SOGo.conf
+# Activate the ActiveSync ProxyPass if upstream ships it commented out.
+# Recent upstream versions already ship it uncommented; these seds are no-ops in that case.
+sed -i -E \
+    -e 's/^#(ProxyPass \/Microsoft-Server-ActiveSync)/\1/' \
+    -e 's/^# (http:\/\/127\.0\.0\.1:20000\/SOGo\/Microsoft-Server-ActiveSync)/ \1/' \
+    -e 's/^# (retry=[^ ]+ connectiontimeout=[^ ]+ timeout=[0-9]+)/ \1/' \
+    /staging/etc/httpd/conf/extra/SOGo.conf
 install -D -m 0644 Scripts/logrotate   /staging/etc/logrotate.d/sogo
 install -d -m 0755                      /staging/usr/lib/sogo/scripts
 install    -m 0755 Scripts/sql-*.sh    /staging/usr/lib/sogo/scripts/

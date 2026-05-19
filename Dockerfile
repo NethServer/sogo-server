@@ -72,8 +72,6 @@ RUN set -eux; \
 
 # Supervisor / apache configuration
 COPY httpd.conf /etc/httpd/conf/httpd.conf
-# Repo-maintained ActiveSync proxy drop-in (httpd.conf Includes it after SOGo.conf)
-COPY SOGoActiveSync.conf /etc/httpd/conf/extra/SOGoActiveSync.conf
 COPY event_listener.ini /etc/supervisor.d/event_listener.ini
 COPY event_listener.sh /usr/local/bin/event_listener.sh
 RUN chmod +x /usr/local/bin/event_listener.sh
