@@ -37,7 +37,7 @@ jobs:
       # Check out the exact commit that was built/published (module-info.yml
       # resolves it from the workflow_run context), so the test script matches
       # the image under test - not whatever is on the default branch.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ needs.module.outputs.sha }}
 
