@@ -4,102 +4,44 @@
 # Copyright (C) 2023 Nethesis S.r.l.
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
+# Thin CI wrapper around the multi-stage Dockerfile. The actual build logic,
+# the from-source compilation (no AUR) and the runtime self-check all live in
+# ./Dockerfile, so the local `podman build` and this CI path are guaranteed
+# equivalent (single source of truth). This script only adds the NethServer
+# image naming and the GitHub Actions output contract.
 
 # Terminate on error
 set -e
-archlinux_version=base-devel
-#visit URL to get the sha
-#https://aur.archlinux.org/packages/sogo/
-#https://aur.archlinux.org/packages/sope/
-#https://aur.archlinux.org/packages/libwbxml
-# target is 5.12.7
-sogo_sha=b7a8d408abc8cc8f39a296dc99f49c117ff53d9e
-sope_sha=b352a2a418d6b1d13e3051dbb22dd784c11995f6
-# target is 0.11.10
-libwbxml_sha=07d05cc55dcbf712cd7dc2a158c9ecd492d69d5e
+
+# Upstream versions (single place to bump). Forwarded to the Dockerfile as
+# build args; the tarball URLs and the runtime version-parity self-check all
+# derive from these. Override via the environment if needed.
+libwbxml_version="0.11.10"
+sope_version="5.12.8"
+sogo_version="5.12.8"
+
 # Prepare variables for later use
 images=()
 # The image will be pushed to GitHub container registry
 repobase="${REPOBASE:-ghcr.io/nethserver}"
-
-#Create sogo-server container
 reponame="sogo-server"
-container=$(buildah from docker.io/library/archlinux:${archlinux_version})
-buildah config --env SOGO_SHA=${sogo_sha} --env SOPE_SHA=${sope_sha} --env LIBWBXML_SHA=${libwbxml_sha} "${container}"
-buildah run "${container}" /bin/sh <<'EOF'
-set -e
-pacman --noconfirm --needed -Syu && \
-    pacman --noconfirm --needed -S base-devel git supervisor apache zip inetutils libsodium libzip libytnef cronie && rm -rf /var/cache/pacman/pkg/download-*/ && yes | pacman -Sccq && \
-    sed 's/.*MAKEFLAGS=.*/MAKEFLAGS="-j$(nproc)"/' -i /etc/makepkg.conf && \
-    sed 's/^# \(%wheel.*NOPASSWD.*\)/\1/' -i /etc/sudoers &&  \
-    useradd -r build -G wheel && \
-    mkdir /build
-(
-    cd /build
-    git clone https://aur.archlinux.org/libwbxml.git
-    cd /build/libwbxml
-    git checkout -b ns8-build ${LIBWBXML_SHA}
-    chown -R build /build/libwbxml
-    sudo -u build makepkg -is --noconfirm && rm -rf /build/libwbxml && rm -rf /var/cache/pacman/pkg/download-*/ && yes | pacman -Sccq
-)
-(
-    cd /build
-    git clone https://aur.archlinux.org/sope.git
-    cd /build/sope
-    git checkout -b ns8-build ${SOPE_SHA}
-    chown -R build /build/sope
-    sudo -u build makepkg -is --noconfirm && rm -rf /build/sope && rm -rf /var/cache/pacman/pkg/download-*/ && yes | pacman -Sccq
-)
-(
-    cd /build
-    git clone https://aur.archlinux.org/sogo.git
-    cd /build/sogo
-    git checkout -b ns8-build ${SOGO_SHA}
-    chown -R build /build/sogo
-    sudo -u build makepkg -is --noconfirm && rm -rf /build/sogo && rm -rf /var/cache/pacman/pkg/download-*/ && yes | pacman -Sccq
-)
-mkdir /var/run/sogo && chown sogo:sogo /var/run/sogo
-mkdir /var/spool/sogo && chown sogo:sogo /var/spool/sogo
 
-# download backup script
-curl -o /usr/lib/sogo/scripts/sogo-backup.sh https://raw.githubusercontent.com/Alinto/sogo/master/Scripts/sogo-backup.sh
-chmod 755 /usr/lib/sogo/scripts/sogo-backup.sh
-
-# clean up
-pacman --noconfirm -Rcns base-devel git && rm -rf /var/cache/pacman/pkg/download-*/ && yes | pacman -Sccq && rm -rf /tmp/* /var/tmp/* /var/cache/pacman/* /build
-EOF
-buildah add "${container}" httpd.conf /etc/httpd/conf/httpd.conf
-buildah add "${container}" event_listener.ini /etc/supervisor.d/event_listener.ini
-buildah add "${container}" event_listener.sh /usr/local/bin/event_listener.sh
-buildah add "${container}" sogod.ini /etc/supervisor.d/sogod.ini
-buildah add "${container}" apache.ini /etc/supervisor.d/apache.ini
-buildah add "${container}" cronie.ini /etc/supervisor.d/cronie.ini
-buildah add "${container}" memcached.ini /etc/supervisor.d/memcached.ini
-
-
-buildah config --env LD_PRELOAD=/usr/lib/libytnef.so \
-    --port 20001/tcp \
-    --port 20000/tcp \
-    --workingdir="/" \
-    --cmd='["/usr/sbin/supervisord", "--nodaemon"]' \
-    --label="org.opencontainers.image.source=https://github.com/NethServer/sogo-server" \
-    --label="org.opencontainers.image.authors=Stephane de Labrusse <stephdl@de-labrusse.fr>" \
-    --label="org.opencontainers.image.title=SOGo based on Archlinux" \
-    --label="org.opencontainers.image.description=A sogo container based on Archlinux that provides apache, sogo, memcached and cron" \
-    --label="org.opencontainers.image.licenses=GPL-3.0-or-later" \
-    --label="org.opencontainers.image.url=https://github.com/NethServer/sogo-server" \
-    --label="org.opencontainers.image.documentation=https://github.com/NethServer/sogo-server/blob/main/README.md" \
-    --label="org.opencontainers.image.vendor=NethServer" \
-    "${container}"
-
-# Commit the image
-buildah commit "${container}" "${repobase}/${reponame}"
+# Build the image from the Dockerfile. The Dockerfile's RUN self-check aborts
+# the build (non-zero exit) if any library, file, apache module/directive or
+# version check fails, so a broken image can never be committed here.
+buildah build \
+    --build-arg LIBWBXML_VERSION="${libwbxml_version}" \
+    --build-arg SOPE_VERSION="${sope_version}" \
+    --build-arg SOGO_VERSION="${sogo_version}" \
+    --tag "${repobase}/${reponame}" \
+    --file Dockerfile \
+    .
 
 # Append the image URL to the images array
 images+=("${repobase}/${reponame}")
 
 #
-# Setup CI when pushing to Github. 
+# Setup CI when pushing to Github.
 # Warning! docker::// protocol expects lowercase letters (,,)
 if [[ -n "${CI}" ]]; then
     # Set output value for Github Actions
