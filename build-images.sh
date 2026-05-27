@@ -17,8 +17,8 @@ set -e
 # build args; the tarball URLs and the runtime version-parity self-check all
 # derive from these. Override via the environment if needed.
 libwbxml_version="0.11.10"
-sope_version="5.12.8"
-sogo_version="5.12.8"
+sope_version="5.12.9"
+sogo_version="5.12.9"
 
 # Prepare variables for later use
 images=()
