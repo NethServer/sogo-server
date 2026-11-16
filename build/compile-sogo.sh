@@ -49,6 +49,10 @@ cd /build
 curl -L -o sogo.tar.gz "${SOGO_URL}"
 tar xf sogo.tar.gz
 cd "SOGo-${SOGO_VERSION}"
+# OpenSSL 4 hides the ASN1_STRING fields, read them through the accessors
+sed -e 's@cap->value\.sequence->data@ASN1_STRING_get0_data(cap->value.sequence)@' \
+    -e 's@cap->value\.sequence->length@ASN1_STRING_length(cap->value.sequence)@' \
+    -i SoObjects/Mailer/NSData+SMIME.m
 ./configure --prefix="$(gnustep-config --variable=GNUSTEP_SYSTEM_ROOT)" \
             --disable-debug --enable-mfa
 make
